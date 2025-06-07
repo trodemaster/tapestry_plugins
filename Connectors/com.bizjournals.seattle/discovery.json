@@ -1,0 +1,13 @@
+{
+    "sites": [
+        "bizjournals.com",
+        "www.bizjournals.com"
+    ],
+    "patterns": [
+        {
+            "url_pattern": ".*bizjournals\\.com/seattle.*",
+            "display_name": "Seattle Business Journal",
+            "description": "Seattle business news with subscriber access"
+        }
+    ]
+} 

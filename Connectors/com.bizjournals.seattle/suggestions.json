@@ -1,0 +1,44 @@
+{
+    "suggestions": [
+        {
+            "name": "Seattle Tech News",
+            "description": "Focus on technology and startup coverage",
+            "variables": {
+                "contentFilter": "tech",
+                "updateInterval": "30"
+            }
+        },
+        {
+            "name": "Real Estate Updates", 
+            "description": "Commercial and residential real estate news",
+            "variables": {
+                "contentFilter": "real-estate",
+                "updateInterval": "60"
+            }
+        },
+        {
+            "name": "Breaking News Only",
+            "description": "Urgent news and alerts",
+            "variables": {
+                "contentFilter": "breaking",
+                "updateInterval": "15"
+            }
+        },
+        {
+            "name": "Startup Scene",
+            "description": "Entrepreneurship and venture funding news",
+            "variables": {
+                "contentFilter": "startups",
+                "updateInterval": "120"
+            }
+        },
+        {
+            "name": "Finance & Banking",
+            "description": "Financial sector news and analysis",
+            "variables": {
+                "contentFilter": "finance", 
+                "updateInterval": "60"
+            }
+        }
+    ]
+} 

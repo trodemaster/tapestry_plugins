@@ -1,0 +1,9 @@
+{
+    "id": "com.bizjournals.seattle",
+    "display_name": "Seattle Business Journal",
+    "site": "https://www.bizjournals.com/seattle/news",
+    "icon": "https://www.bizjournals.com/seattle/favicon.ico",
+    "item_style": "article",
+    "needs_verification": true,
+    "provides_attachments": true
+} 
