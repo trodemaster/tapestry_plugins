@@ -1,341 +1,75 @@
-This repo holds my tapestry plungins
+# Tapestry Plugins
 
-The first plugin I'm making is for https://www.bizjournals.com/seattle
+A collection of custom Tapestry plugins for accessing news and content sources that aren't available through standard RSS feeds.
 
-var sessionCookies = null;
-var lastLoginTime = null;
-var loginDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+## About Tapestry
 
-function verify() {
-    // Check if we need to login or refresh session
-    const now = new Date().getTime();
-    if (sessionCookies == null || 
-        lastLoginTime == null || 
-        (now - lastLoginTime) > loginDuration) {
-        
-        console.log("Attempting login...");
-        login()
-        .then(() => {
-            console.log("Login successful, verifying account...");
-            verifyAccountAccess();
-        })
-        .catch((error) => {
-            console.log(`Login failed: ${error.message}`);
-            processError(error);
-        });
-    } else {
-        console.log("Using existing session...");
-        verifyAccountAccess();
-    }
-}
+[Tapestry](https://usetapestry.com/) is a modern news reader that allows you to create custom timelines from various sources. These plugins extend Tapestry's capabilities to include sites that require authentication or special handling.
 
-function login() {
-    return new Promise((resolve, reject) => {
-        // First, get the login page to extract any CSRF tokens or form data
-        sendRequest(`${site}/login`)
-        .then((html) => {
-            // Extract CSRF token or other required form fields
-            const csrfMatch = html.match(/name="authenticity_token"[^>]*value="([^"]*)"/) ||
-                             html.match(/name="_token"[^>]*value="([^"]*)"/) ||
-                             html.match(/<meta name="csrf-token" content="([^"]*)">/);
-            
-            let formData = `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-            
-            if (csrfMatch) {
-                const csrfToken = csrfMatch[1];
-                formData += `&authenticity_token=${encodeURIComponent(csrfToken)}`;
-                console.log("Found CSRF token");
-            }
-            
-            // Attempt login
-            const headers = {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Referer": `${site}/login`
-            };
-            
-            sendRequest(`${site}/login`, "POST", formData, headers, true)
-            .then((response) => {
-                const responseData = JSON.parse(response);
-                
-                // Check for successful login indicators
-                if (responseData.status === 302 || responseData.status === 200) {
-                    // Extract session cookies from headers
-                    const setCookieHeaders = responseData.headers['set-cookie'];
-                    if (setCookieHeaders) {
-                        sessionCookies = extractSessionCookies(setCookieHeaders);
-                        lastLoginTime = new Date().getTime();
-                        setItem("sessionCookies", sessionCookies);
-                        setItem("lastLoginTime", lastLoginTime.toString());
-                        console.log("Login successful, session cookies saved");
-                        resolve();
-                    } else {
-                        reject(new Error("Login failed: No session cookies received"));
-                    }
-                } else if (responseData.status === 401 || responseData.status === 403) {
-                    reject(new Error("Login failed: Invalid credentials"));
-                } else {
-                    reject(new Error(`Login failed: HTTP ${responseData.status}`));
-                }
-            })
-            .catch((error) => {
-                reject(new Error(`Login request failed: ${error.message}`));
-            });
-        })
-        .catch((error) => {
-            reject(new Error(`Failed to load login page: ${error.message}`));
-        });
-    });
-}
+## Available Plugins
 
-function extractSessionCookies(setCookieHeaders) {
-    // Extract relevant session cookies
-    const cookies = {};
-    const cookieArray = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
-    
-    cookieArray.forEach(cookieHeader => {
-        const match = cookieHeader.match(/^([^=]+)=([^;]+)/);
-        if (match) {
-            const [, name, value] = match;
-            // Store important session cookies
-            if (name.toLowerCase().includes('session') || 
-                name.toLowerCase().includes('auth') ||
-                name.toLowerCase().includes('login')) {
-                cookies[name] = value;
-            }
-        }
-    });
-    
-    return cookies;
-}
+### Seattle Business Journal
 
-function verifyAccountAccess() {
-    // Test access to subscriber-only content to verify authentication
-    const testUrl = `${site}/subscribers` || `${site}/account` || `${site}/profile`;
-    
-    const headers = {};
-    if (sessionCookies) {
-        headers['Cookie'] = buildCookieHeader(sessionCookies);
-    }
-    
-    sendRequest(testUrl, "GET", null, headers)
-    .then((html) => {
-        // Look for indicators of successful authentication
-        if (html.includes('Sign Out') || 
-            html.includes('My Account') || 
-            html.includes('subscriber') ||
-            !html.includes('Sign In')) {
-            
-            const verification = {
-                displayName: `Seattle Business Journal - ${email}`,
-                icon: "https://www.bizjournals.com/seattle/favicon.ico"
-            };
-            processVerification(verification);
-        } else {
-            processError(new Error("Authentication verification failed - please check credentials"));
-        }
-    })
-    .catch((error) => {
-        processError(new Error(`Failed to verify account access: ${error.message}`));
-    });
-}
+Access Seattle Business Journal articles with your paid subscription.
 
-function buildCookieHeader(cookies) {
-    return Object.entries(cookies)
-        .map(([name, value]) => `${name}=${value}`)
-        .join('; ');
-}
+**Requirements:**
+- Active Seattle Business Journal subscription
+- Email and password credentials
 
-function load() {
-    // Check if we need to refresh authentication
-    if (needsReauth()) {
-        console.log("Refreshing authentication...");
-        login()
-        .then(() => loadContent())
-        .catch((error) => processError(error));
-    } else {
-        loadContent();
-    }
-}
+**Features:**
+- Authenticated access to subscriber content
+- Content filtering by topic (breaking news, real estate, tech, finance, startups)
+- Customizable update intervals (15 minutes to 4 hours)
+- Article images included
+- Automatic session management
 
-function needsReauth() {
-    const now = new Date().getTime();
-    return sessionCookies == null || 
-           lastLoginTime == null || 
-           (now - lastLoginTime) > loginDuration;
-}
+**Installation:**
+1. Download `seattle-business-journal.tapestry` from this repository
+2. In Tapestry app: Settings → Connectors → Add a Connector
+3. Select the downloaded file
+4. Create a feed and enter your subscription credentials
 
-function loadContent() {
-    // Load cached session data
-    if (sessionCookies == null) {
-        const storedCookies = getItem("sessionCookies");
-        const storedLoginTime = getItem("lastLoginTime");
-        
-        if (storedCookies && storedLoginTime) {
-            sessionCookies = storedCookies;
-            lastLoginTime = parseInt(storedLoginTime);
-        }
-    }
-    
-    const headers = {};
-    if (sessionCookies) {
-        headers['Cookie'] = buildCookieHeader(sessionCookies);
-    }
-    
-    // Try RSS feeds first (they might be available to subscribers)
-    const rssUrls = [
-        `${site}/rss/all`,
-        `${site}/feeds/latest.rss`,
-        `${site}/rss`,
-        `${site}/feed`
-    ];
-    
-    tryAuthenticatedRSSFeeds(rssUrls, headers)
-    .then((items) => {
-        if (items && items.length > 0) {
-            processResults(items);
-        } else {
-            // Fallback to scraping subscriber content
-            scrapeSubscriberContent(headers);
-        }
-    })
-    .catch((error) => {
-        console.log(`RSS loading failed: ${error.message}, falling back to scraping`);
-        scrapeSubscriberContent(headers);
-    });
-}
+**Settings:**
+- **Email**: Your subscription email address
+- **Password**: Your account password
+- **Update Frequency**: How often to check for new articles
+- **Content Focus**: Filter articles by topic
+- **Include Images**: Toggle article images on/off
 
-function tryAuthenticatedRSSFeeds(urls, headers) {
-    return new Promise((resolve, reject) => {
-        let attempts = 0;
-        
-        function tryNext() {
-            if (attempts >= urls.length) {
-                reject(new Error("No working RSS feeds found"));
-                return;
-            }
-            
-            const url = urls[attempts];
-            attempts++;
-            
-            sendRequest(url, "GET", null, headers)
-            .then((xml) => {
-                const items = parseRSSFeed(xml);
-                if (items && items.length > 0) {
-                    resolve(items);
-                } else {
-                    tryNext();
-                }
-            })
-            .catch(() => tryNext());
-        }
-        
-        tryNext();
-    });
-}
+## How to Use
 
-function scrapeSubscriberContent(headers) {
-    // Scrape the main news page for subscriber content
-    sendRequest(site, "GET", null, headers)
-    .then((html) => {
-        const items = extractArticlesFromHTML(html);
-        processResults(items);
-    })
-    .catch((error) => {
-        processError(new Error(`Failed to load content: ${error.message}`));
-    });
-}
+1. **Download** the `.tapestry` file for the plugin you want
+2. **Install** it in the Tapestry app via Settings → Connectors → Add a Connector
+3. **Create a feed** using the new connector
+4. **Configure** your settings (credentials, update frequency, etc.)
+5. **Enjoy** articles in your timeline
 
-function parseRSSFeed(xml) {
-    try {
-        const jsonObject = xmlParse(xml);
-        const items = [];
-        
-        // Handle both RSS and Atom feeds
-        let entries = [];
-        if (jsonObject.rss && jsonObject.rss.channel && jsonObject.rss.channel.item) {
-            entries = Array.isArray(jsonObject.rss.channel.item) ? 
-                     jsonObject.rss.channel.item : [jsonObject.rss.channel.item];
-        } else if (jsonObject.feed && jsonObject.feed.entry) {
-            entries = Array.isArray(jsonObject.feed.entry) ? 
-                     jsonObject.feed.entry : [jsonObject.feed.entry];
-        }
-        
-        entries.forEach(entry => {
-            const item = createItemFromRSSEntry(entry);
-            if (item) items.push(item);
-        });
-        
-        return items;
-    } catch (error) {
-        console.log(`RSS parsing failed: ${error.message}`);
-        return [];
-    }
-}
+## Plugin Development
 
-function createItemFromRSSEntry(entry) {
-    try {
-        // Handle both RSS and Atom format
-        const title = entry.title || "";
-        const link = entry.link || entry.link$attrs?.href || "";
-        const description = entry.description || entry.summary || "";
-        const pubDate = entry.pubDate || entry.published || entry.updated;
-        
-        if (!link || !title) return null;
-        
-        const date = pubDate ? new Date(pubDate) : new Date();
-        const item = Item.createWithUriDate(link, date);
-        
-        item.title = title;
-        item.body = description;
-        
-        // Filter by content type if specified
-        if (contentFilter !== "all") {
-            const content = (title + " " + description).toLowerCase();
-            const matchesFilter = checkContentFilter(content, contentFilter);
-            if (!matchesFilter) return null;
-        }
-        
-        return item;
-    } catch (error) {
-        console.log(`Error creating item: ${error.message}`);
-        return null;
-    }
-}
+These plugins are built using the [Tapestry API](https://github.com/TheIconfactory/Tapestry) and require authentication or special handling that standard RSS feeds cannot provide.
 
-function checkContentFilter(content, filter) {
-    const filters = {
-        "breaking": ["breaking", "urgent", "alert"],
-        "real-estate": ["real estate", "property", "development", "construction"],
-        "tech": ["technology", "tech", "startup", "software", "digital"],
-        "finance": ["finance", "bank", "investment", "funding", "ipo"],
-        "startups": ["startup", "entrepreneur", "venture", "funding round"]
-    };
-    
-    const keywords = filters[filter];
-    return keywords ? keywords.some(keyword => content.includes(keyword)) : true;
-}
+To build plugins from source:
+```bash
+git clone https://github.com/trodemaster/tapestry_plugins.git
+cd tapestry_plugins
+make build
+```
 
-function extractArticlesFromHTML(html) {
-    // Implement HTML scraping as fallback
-    const items = [];
-    
-    try {
-        // Look for common article patterns on business journal sites
-        const articlePatterns = [
-            /<article[^>]*>.*?<\/article>/gis,
-            /<div[^>]*class="[^"]*story[^"]*"[^>]*>.*?<\/div>/gis,
-            /<div[^>]*class="[^"]*article[^"]*"[^>]*>.*?<\/div>/gis
-        ];
-        
-        // This would need to be customized based on the actual HTML structure
-        // of the Seattle Business Journal website
-        
-        console.log("HTML scraping not fully implemented - needs site-specific selectors");
-        
-    } catch (error) {
-        console.log(`HTML extraction failed: ${error.message}`);
-    }
-    
-    return items;
-}
+## Support
+
+These are community-developed plugins. For issues:
+
+1. Verify your subscription/credentials are valid
+2. Check that you can access the content via web browser
+3. Try removing and re-adding the feed with fresh credentials
+
+## Privacy
+
+- All credentials are stored locally on your device
+- No data is shared with third parties
+- Plugins only access the content you explicitly configure
+
+## Disclaimer
+
+These plugins are not affiliated with or endorsed by their respective content providers.
 
