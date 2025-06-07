@@ -1,2 +1,13 @@
+# macOS
 .DS_Store
+
+# Tapestry build artifacts
+*.tapestry
+
+# Backup files
+*.bak
+*~
+
+# Log files
+*.log
 
