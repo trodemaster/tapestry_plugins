@@ -8,8 +8,9 @@
         },
         {
             "name": "password",
-            "type": "password", 
-            "prompt": "Password"
+            "type": "text", 
+            "prompt": "Password",
+            "placeholder": "Enter your subscription password"
         },
         {
             "name": "updateInterval",
